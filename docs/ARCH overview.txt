@@ -1,0 +1,132 @@
+Over a period of time I thought that CISC architecture was supream, yet I was recently led to develop a RISC architecture. Origanaly I was hoping to build a simple emulated architecture for a bytecode languge, that is what curently is in the GitHub repo: https://github.com/Xeno333/HR-RISC
+
+But more recently I have begun to think it may very well be implimented on silicon or perhaps gallium chips, to be used for high speed parallel processing, as it is limited to only 16 instruction (with the 16th as an extended instruction or for interupt trigering depending on the implimentation.) Here I present HR-RISC:
+
+The Opcodes:
+
+Mathimatical opcodes:
+
+mul <op1> <op2>
+div <op1> <op2>
+mod <op1> <op2>
+add <op1> <op2>
+sub <op1> <op2>
+
+Logic opcoeds:
+
+or <op1> <op2>
+and <op1> <op2>
+xor <op1> <op2>
+not <op1>
+
+Data movment opcodes:
+
+mov <op1> <op2>
+set <op1> <op2>
+
+Stack related opcodes:
+
+push<op1>
+pop <op1>
+
+Conditional opcodes:
+
+cmp <op1> <op2>
+cmov <con 64 bit> <op1> <op2> (This is used in place of jump)
+
+xtn <Expanded instructions> (Could also be replaced with “int” but I have chosen to keep it this way for future proofing)
+
+Opcode formating:
+
+Max size for Opcode and operands is 64 bytes
+Max number of 4 operands isper instruction.
+
+Format (in binary format):
+xx Y1 Y2 zzzz
+
+X is the log base 2 of the size of operands, 0 = 8 bit, 1 = 16 bit, 2 = 32 bit, 3 = 64 bit.
+Y1 is the operand 1’s type, 0 = register, 1 = memory. 0 if not used, [SRC] type flag
+Y2 is the operand 2’s type, 0 = register, 1 = memory. 0 if not used, [DST] type flag
+Z is 4 bit opcode
+
+This allows for both opcode and operation data to be stored in the same byte, thereby decreasing code size, as is one of the problems in most RISC architecture. It also uses a varient of the Intel sytext i.e. <opc> [DST] [SRC]
+
+Opcodes in 4 bit hex:
+0x0 XY* mul
+0x1 XY* div
+0x2 XY* mod
+0x3 XY* add
+0x4 XY* sub
+0x5 XY* or
+0x6 XY* and
+0x7 XY* xor
+0x8 X0* not
+0x9 XY* mov (used with r15 to make jump and with push/pop to make call/ret)
+0xa X0* Z set (Z would be the value in the apropret size) (used with r15 to make jump and with push/pop to make call/ret)
+0xb 0Y* push
+0xc X0* pop
+0xd XY* cmp
+0xe 0P XY* cmov (P is the regid containing the bit number with the flags to be checked set.) (used with r15 to make conditional jump and with push/pop to make call/ret)
+0xf 0P xtn (<opc> [S] <eopc> <eopr>) Extended instructions. S indicates the size of the instruction, including opcode and itself. Must be at least 2.
+
+X and Y are packed into one byte in the form:
+xxxxyyyy
+X is regid1
+Y is regid2
+Z is a sized operand, its size is detemend by the OPSIZE in the opcode
+P is operand and comes between opcode and main operand it is 8 bytes long
+
+*
+Extended opcodes:
+00 (xtn 0b) vmfc X(8 bytes identifying the Vfunction) Resurved for EthercyVM simaler to java “INVOKEVIRTUAL”, Should cause fault on real hardware.
+The rest remain resurved for further development.
+Handeling Jump and Call/Return:
+To preform a call/ret or jump you simply use any instruction that can modify a register (set/mov/cmov/etc.) paired with push/pop.
+
+Registers:
+
+r0 Genral
+r1 Genral
+r2 Genral
+r3 Genral
+r4 Genral
+r5 Genral
+r6 Genral
+r7 Genral
+
+r8 is used as rbp
+r9 is used for stack
+
+r10 reserved for vm or hardware (This would be for page table pointer){
+If page that is not present is adressed, “Interupt 0” is trigered i.e. r13 is set to 0 and jump to r12, r1 is pushed on stack and set to adress that caused error.
+}
+r11 reserved for vm or hardware (This would be for CPU control) {
+Bit 0: #RW
+Bit 1: #FLSH
+Bit 2: #PRIV 0 = Ring 0, 1 = Ring 1. #PRIV 0 can only run in areas of memory that aer marked as #PRIV0 in “page table”
+The rest are resureved for now
+}
+r12 reserved for vm or hardware (Sysenter config or interupt setup, can only be writen while #PRIV = 0)
+r13 reserved for vm or hardware (Trigers “interupt” jumps to adress at r12, in #PRIV = 0, value is the interupt ID)
+
+r14 is rflags
+r15 is rip
+
+operations on a register only affect the size specified
+
+Stack:
+Stack grows down! This is oposed to the X86 implimentation of upward.
+
+I also have designed a memory layout to be implemented on this archatecture:
+
+All of on bord ROM/RAM and firmwear is layed out as follows
+
+First 8KiB is ROM for Verify that the UEFI/BIOS is valid and jumps to it
+
+Next 248KiB is ROM for system ID information i.e. board ID, memory type, etc…
+
+Next 768KiB is #RW (#RW requires a CPU flag to be set, in R11, in order for it to be adressed) eg. CMOS, RTC, etc.
+
+Rest of memory is free for normal use.
+
+That is a basic over view of my new HR-RISC!
