@@ -621,10 +621,16 @@ int do_line(char* line, int line_number) {
 
 
 
-int main(int argc, char *arg[]) {
-    if (argc != 3) {
-            printf("Useage: ethercyasm <infile> <outfile>\n");
+int main(int argc, char** arg) {
+    int bin = 0;
+    if (argc < 3) {
+            printf("Useage: ethercyasm <infile> <outfile> (-bin)\n");
             return 1;
+    }
+    if (argc > 3) {
+        if (strcmp(arg[3], "-bin") == 0) {
+            bin = 1;
+        } 
     }
     fin = fopen(arg[1], "r");
     fout = fopen(arg[2], "w");
@@ -681,16 +687,36 @@ int main(int argc, char *arg[]) {
         line++;
     } while(0 == 0);
 
-    fwrite(&Output_header, sizeof(Output_header), 1, fout);
-    fclose(foutobj);
-    foutobj = fopen(objname, "r");
-    fseek(foutobj, 0L, SEEK_END);
-    unsigned long long fobjsize = ftell(foutobj);
-    rewind(foutobj);
-    unsigned char* obj = malloc(fobjsize);
-    fread(obj, 1, fobjsize, foutobj);
-    fwrite(obj, fobjsize, 1, fout);
-    free(obj);
+    if (bin == 1) {
+        fclose(foutobj);
+
+        foutobj = fopen(objname, "r");
+        fseek(foutobj, 0L, SEEK_END);
+
+        unsigned long long fobjsize = ftell(foutobj);
+        rewind(foutobj);
+
+        unsigned char* obj = malloc(fobjsize);
+        fread(obj, 1, fobjsize, foutobj);
+        fwrite(obj, fobjsize, 1, fout);
+        free(obj);
+
+    }
+    else {
+        fwrite(&Output_header, sizeof(Output_header), 1, fout);
+        fclose(foutobj);
+
+        foutobj = fopen(objname, "r");
+        fseek(foutobj, 0L, SEEK_END);
+
+        unsigned long long fobjsize = ftell(foutobj);
+        rewind(foutobj);
+
+        unsigned char* obj = malloc(fobjsize);
+        fread(obj, 1, fobjsize, foutobj);
+        fwrite(obj, fobjsize, 1, fout);
+        free(obj);
+    }
 
     close(0);
 }
