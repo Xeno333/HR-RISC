@@ -1,2 +1,2 @@
 # HR-RISC
-Hyoer Reduced RISC
+Hyper Reduced RISC
