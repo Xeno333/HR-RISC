@@ -2,7 +2,7 @@ Over a period of time I thought that CISC architecture was supream, yet I was re
 
 But more recently I have begun to think it may very well be implimented on silicon or perhaps gallium chips, to be used for high speed parallel processing, as it is limited to only 16 instruction (with the 16th as an extended instruction or for interupt trigering depending on the implimentation.) Here I present HR-RISC:
 
-The Opcodes:
+The Opcodes (Note: direct memory access is prohibited, you must adress it with an adress in a registor):
 
 Mathimatical opcodes:
 
