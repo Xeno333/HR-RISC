@@ -1,0 +1,106 @@
+Instruction format:
+
+(xtnd(extended operations)) Operator (Preoperand (always 64 bit)) <Operand1> <Operand2> <extended Operands>
+
+instructions:
+mul <op1> <op2>
+div <op1> <op2>
+mod <op1> <op2>
+add <op1> <op2>
+sub <op1> <op2>
+
+or  <op1> <op2>
+and <op1> <op2>
+xor <op1> <op2>
+not <op1>
+
+mov <op1> <op2>
+set <op1> <op2>
+
+push<op1>
+pop <op1>
+
+cmp <op1> <op2>
+cmov <con 64 bit> <op1> <op2> 
+
+xtn <Expanded instructions>
+
+
+
+Opcodes:
+
+Max size for Opcode and operands is 64 bytes
+Max of 4 operands per instruction.
+
+Format:
+	binary:
+		xx Y1 Y2 zzzz
+
+		X is the log base 2 of the size of operands, 0 = 8 bit, 1 = 16 bit, 2 = 32 bit, 3 = 64 bit.
+		Y1 is the operand 1's type, 0 = register, 1 = memory. 0 if not used
+		Y2 is the operand 2's type, 0 = register, 1 = memory. 0 if not used
+		Z is opcode
+		
+
+Opcode	Operand*Istruct	Format					Notes
+0	XY	mul	(opc	opr			)
+1	XY	div	(opc	opr			)
+2	XY	mod	(opc	opr			)
+3	XY	add	(opc	opr			)
+4	XY	sub	(opc	opr			)
+5	XY	or	(opc	opr			)
+6	XY	and	(opc	opr			)
+7	XY	xor	(opc	opr			)
+8	X0	not	(opc	opr			)
+9	XY	mov	(opc	opr			)
+a	X0 Z	set	(opc	opr	eopr		)
+b	0Y	push	(opc	opr			)
+c	X0	pop	(opc	opr			)
+d	XY	cmp	(opc	opr			)
+e	0P XY	cmov	(opc	con	opr		)	P is the regid containing the bit number with the flags to be checked set.
+f	P	xtn	(opc	S	eopc	eopr	)	Extended instructions. S indicates the size of the instruction, including opcode and itself. Must be at least 2. Extensions must be submitted to officle doc for usage. None yet.
+
+*
+X and Y are packed into one byte in the form:
+xxxxyyyy
+X is regid1 (dest)
+Y is regid2 (src) (divisor for div)
+Z is a sized operand, its size is detemend by the OPSIZE in the opcode
+P is operand and comes between opcode and main operand it is 8 bytes long
+
+**
+Extended opcodes:
+00	(xtn 0b) vmfc X(8 bytes identifying the Vfunction) Resurved for EthercyVM simaler to java "INVOKEVIRTUAL", Should cause fault on real hardware.
+Free
+
+
+
+registers:
+r0 Genral
+r1 Genral
+r2 Genral
+r3 Genral
+r4 Genral
+r5 Genral
+r6 Genral
+r7 Genral
+
+r8 is used as rbp
+r9 is used for stack
+
+r10 reserved for vm or hardware
+r11 reserved for vm or hardware
+r12 reserved for vm or hardware
+r13 reserved for vm or hardware
+
+r14 is rflags
+r15 is rip
+
+
+operations on a register only affect the size specified
+
+
+Stack:
+Stack grows down!
+
+

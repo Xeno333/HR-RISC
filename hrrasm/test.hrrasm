@@ -1,0 +1,18 @@
+$code
+
+mov q r0, r1
+
+main:	set q r0, 0x10
+	xtn q vmfc, 0x0
+	;mov q r0, r1
+	
+	set q r0, main
+	mul q r1, r2
+
+$data
+
+
+blob:	res b 0x61
+
+
+$end
