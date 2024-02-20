@@ -45,8 +45,8 @@ Format (in binary format):
 xx Y1 Y2 zzzz
 
 X is the log base 2 of the size of operands, 0 = 8 bit, 1 = 16 bit, 2 = 32 bit, 3 = 64 bit.
-Y1 is the operand 1’s type, 0 = register, 1 = memory. 0 if not used, [SRC] type flag
-Y2 is the operand 2’s type, 0 = register, 1 = memory. 0 if not used, [DST] type flag
+Y1 is the operand 1’s type, 0 = register, 1 = memory. 0 if not used, [DST] type flag
+Y2 is the operand 2’s type, 0 = register, 1 = memory. 0 if not used, [SRC] type flag
 Z is 4 bit opcode
 
 This allows for both opcode and operation data to be stored in the same byte, thereby decreasing code size, as is one of the problems in most RISC architecture. It also uses a varient of the Intel sytext i.e. <opc> [DST] [SRC]
@@ -71,8 +71,8 @@ Opcodes in 4 bit hex:
 
 X and Y are packed into one byte in the form:
 xxxxyyyy
-X is regid1
-Y is regid2
+X is regid1 (DST)
+Y is regid2 (SRC)
 Z is a sized operand, its size is detemend by the OPSIZE in the opcode
 P is operand and comes between opcode and main operand it is 8 bytes long
 
@@ -128,5 +128,3 @@ Next 248KiB is ROM for system ID information i.e. board ID, memory type, etc…
 Next 768KiB is #RW (#RW requires a CPU flag to be set, in R11, in order for it to be adressed) eg. CMOS, RTC, etc.
 
 Rest of memory is free for normal use.
-
-That is a basic over view of my new HR-RISC!
