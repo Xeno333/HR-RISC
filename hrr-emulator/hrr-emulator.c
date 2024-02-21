@@ -14,57 +14,46 @@ extern void* malloc(size_t size);
 FILE* fin;
 
 
-struct {
-    unsigned long long main_offset;
-    unsigned long long data_offset;
-    unsigned long long rodata_offset;
-}__attribute__((packed)) Header = {0, 0, 0};
-
-
 unsigned long long R[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-unsigned char* Code = NULL;
-unsigned long long CodeSize = 0;
-unsigned char* Data = NULL;
-unsigned long long DataSize = 0;
-unsigned char* ROData = NULL;
-unsigned long long RODataSize = 0;
-unsigned char* stack = NULL;
-
-unsigned char opcode = 0;
+unsigned char* Memory = NULL;
+unsigned long long MemorySize = 0;
 
 enum {
     true = 0, 
     false = 1
 } running = true;
 
+typedef enum {
+    REG = 0, 
+    MEM = 1
+} Optype;
+
+typedef struct {
+    unsigned char log_2_size : 2;
+    Optype dst_type : 1;
+    Optype src_type : 1;
+    unsigned char opc : 4;
+}__attribute__((packed)) opcode;
+    //opcode op;
+    //op.log_2_size = (Memory[R[15]] >> 6) & 0x03;
+    //op.dst_type = (Memory[R[15]] >> 5) & 0x01;
+    //op.src_type = (Memory[R[15]] >> 4) & 0x01;
+    //op.opc = Memory[R[15]] & 0x0F;   
+
 
 void close(int rc) {
     if (fin != NULL) fclose(fin);
 
-    if (Code != NULL) free(Code);
-    if (Data != NULL) free(Data);
-    if (ROData != NULL) free(ROData);
+    if (Memory != NULL) free(Memory);
+
+    printf("\n\nExited with return code: 0x%llx\n", R[0]);
 
     exit(rc);
 }
 
 
 
-//VMFC
-void xtn_vmfc() {
-    switch (((unsigned long long*)(Code + R[15] + 3))[0]) {
-        case 0x00:
-            running = false;
-            break;
-        case 0x01:
-            printf("!%c", (char)R[0]);
-            break;
-        default:
-            printf("\n!Unknown vmfc!\n");
-            close(1);
-    }
-}
 
 typedef struct {
     unsigned long long* dest;
@@ -82,63 +71,404 @@ reg_operand_packet getreg(unsigned char in) {
 
 
 
+//Fun
+unsigned long long power(unsigned long long base, int exponent) {
+    unsigned long long result = 1.0;
+    for (int i = 0; i < exponent; ++i) {
+        result *= base;
+    }
+    return result;
+}
+
+unsigned long long get_size_mask(int  e) {
+    unsigned long long mask = ~0;
+    for (int i = power(2, e); i != 0; i--) {
+        mask = mask << 8;
+    }
+    return ~mask;
+}
+
+
+unsigned long long get_mem_q(unsigned long long p) {
+    unsigned long long res = Memory[p];
+    for (int i = 1; i != 8; i++) {
+        res = res | (Memory[p + i]<< (8 * i));
+    }
+    return res;
+}
+
+void set_mem_q(unsigned long long plc, unsigned long long p) {
+    for (int i = 0; i != 8; i++) {
+        Memory[plc + i] = (p >> (8 * i)) & 0xff;
+    }
+}
+
+//VMFC
+void xtn_vmfc() {
+    switch (((unsigned long long*)(Memory + R[15] + 3))[0]) {
+        case 0x00:
+            running = false;
+            break;
+        case 0x01:
+            printf("%c", (char)R[0]);
+            break;
+        default:
+            printf("\n!Unknown vmfc!\n");
+            close(1);
+    }
+}
 //Core
 
 
 
 void mul() {
-    reg_operand_packet regs = getreg(Code[R[15] + 1]);
-    //add memory and size checks
+    reg_operand_packet regs = getreg(Memory[R[15] + 1]);
+    unsigned long long size_mask = get_size_mask((Memory[R[15]] >> 6) & 0x03);
+    unsigned long long i1, i2;
+    unsigned long long v;
 
-    switch ((Code[R[15]] & 0b00110000) >> 4) {
-        case 0x00:
-            regs.dest[0] *= regs.src[0];
+    //in 1
+    if ((Memory[R[15]] >> 5) & 0x01 == 1) {
+        i1 = get_mem_q(*regs.dest) & size_mask;
+    }
+    else {
+        i1 = *regs.dest & size_mask;
+    }
+    //in 2
+    if ((Memory[R[15]] >> 4) & 0x01 == 1) {
+        i2 = get_mem_q(*regs.src) & size_mask;
+    }
+    else {
+        i2 = *regs.src & size_mask;
     }
 
+    v = i1 * i2;//operate
     
-    R[15] += 2;
+    //out
+    if ((Memory[R[15]] >> 5) & 0x01 == 1) {
+        set_mem_q(*regs.dest, v & size_mask);
+    }
+    else {
+        *regs.dest = v;
+    }
+
+    if (regs.dest != & R[15])
+        R[15] += 2;
 }
 
 void div() {
+    reg_operand_packet regs = getreg(Memory[R[15] + 1]);
+    unsigned long long size_mask = get_size_mask((Memory[R[15]] >> 6) & 0x03);
+    unsigned long long i1, i2;
+    unsigned long long v;
+
+    //in 1
+    if ((Memory[R[15]] >> 5) & 0x01 == 1) {
+        i1 = get_mem_q(*regs.dest) & size_mask;
+    }
+    else {
+        i1 = *regs.dest & size_mask;
+    }
+    //in 2
+    if ((Memory[R[15]] >> 4) & 0x01 == 1) {
+        i2 = get_mem_q(*regs.src) & size_mask;
+    }
+    else {
+        i2 = *regs.src & size_mask;
+    }
+
+    v = i1 / i2;//operate
     
+    //out
+    if ((Memory[R[15]] >> 5) & 0x01 == 1) {
+        set_mem_q(*regs.dest, v & size_mask);
+    }
+    else {
+        *regs.dest = v;
+    }
+
+    if (regs.dest != & R[15])
+        R[15] += 2;
 }
 
 void mod() {
+    reg_operand_packet regs = getreg(Memory[R[15] + 1]);
+    unsigned long long size_mask = get_size_mask((Memory[R[15]] >> 6) & 0x03);
+    unsigned long long i1, i2;
+    unsigned long long v;
+
+    //in 1
+    if ((Memory[R[15]] >> 5) & 0x01 == 1) {
+        i1 = get_mem_q(*regs.dest) & size_mask;
+    }
+    else {
+        i1 = *regs.dest & size_mask;
+    }
+    //in 2
+    if ((Memory[R[15]] >> 4) & 0x01 == 1) {
+        i2 = get_mem_q(*regs.src) & size_mask;
+    }
+    else {
+        i2 = *regs.src & size_mask;
+    }
+
+    v = i1 % i2;//operate
     
+    //out
+    if ((Memory[R[15]] >> 5) & 0x01 == 1) {
+        set_mem_q(*regs.dest, v & size_mask);
+    }
+    else {
+        *regs.dest = v;
+    }
+
+    if (regs.dest != & R[15])
+        R[15] += 2;
 }
 
 void add() {
+    reg_operand_packet regs = getreg(Memory[R[15] + 1]);
+    unsigned long long size_mask = get_size_mask((Memory[R[15]] >> 6) & 0x03);
+    unsigned long long i1, i2;
+    unsigned long long v;
+
+    //in 1
+    if ((Memory[R[15]] >> 5) & 0x01 == 1) {
+        i1 = get_mem_q(*regs.dest) & size_mask;
+    }
+    else {
+        i1 = *regs.dest & size_mask;
+    }
+    //in 2
+    if ((Memory[R[15]] >> 4) & 0x01 == 1) {
+        i2 = get_mem_q(*regs.src) & size_mask;
+    }
+    else {
+        i2 = *regs.src & size_mask;
+    }
+
+    v = i1 + i2;//operate
     
+    //out
+    if ((Memory[R[15]] >> 5) & 0x01 == 1) {
+        set_mem_q(*regs.dest, v & size_mask);
+    }
+    else {
+        *regs.dest = v;
+    }
+
+    if (regs.dest != & R[15])
+        R[15] += 2;
 }
 
 void sub() {
+    reg_operand_packet regs = getreg(Memory[R[15] + 1]);
+    unsigned long long size_mask = get_size_mask((Memory[R[15]] >> 6) & 0x03);
+    unsigned long long i1, i2;
+    unsigned long long v;
+
+    //in 1
+    if ((Memory[R[15]] >> 5) & 0x01 == 1) {
+        i1 = get_mem_q(*regs.dest) & size_mask;
+    }
+    else {
+        i1 = *regs.dest & size_mask;
+    }
+    //in 2
+    if ((Memory[R[15]] >> 4) & 0x01 == 1) {
+        i2 = get_mem_q(*regs.src) & size_mask;
+    }
+    else {
+        i2 = *regs.src & size_mask;
+    }
+
+    v = i1 - i2;//operate
     
+    //out
+    if ((Memory[R[15]] >> 5) & 0x01 == 1) {
+        set_mem_q(*regs.dest, v & size_mask);
+    }
+    else {
+        *regs.dest = v;
+    }
+
+    if (regs.dest != & R[15])
+        R[15] += 2;
 }
 
 
 void or() {
+    reg_operand_packet regs = getreg(Memory[R[15] + 1]);
+    unsigned long long size_mask = get_size_mask((Memory[R[15]] >> 6) & 0x03);
+    unsigned long long i1, i2;
+    unsigned long long v;
+
+    //in 1
+    if ((Memory[R[15]] >> 5) & 0x01 == 1) {
+        i1 = get_mem_q(*regs.dest) & size_mask;
+    }
+    else {
+        i1 = *regs.dest & size_mask;
+    }
+    //in 2
+    if ((Memory[R[15]] >> 4) & 0x01 == 1) {
+        i2 = get_mem_q(*regs.src) & size_mask;
+    }
+    else {
+        i2 = *regs.src & size_mask;
+    }
+
+    v = i1 | i2;//operate
     
+    //out
+    if ((Memory[R[15]] >> 5) & 0x01 == 1) {
+        set_mem_q(*regs.dest, v & size_mask);
+    }
+    else {
+        *regs.dest = v;
+    }
+
+    if (regs.dest != & R[15])
+        R[15] += 2;
 }
 
 void and() {
+    reg_operand_packet regs = getreg(Memory[R[15] + 1]);
+    unsigned long long size_mask = get_size_mask((Memory[R[15]] >> 6) & 0x03);
+    unsigned long long i1, i2;
+    unsigned long long v;
+
+    //in 1
+    if ((Memory[R[15]] >> 5) & 0x01 == 1) {
+        i1 = get_mem_q(*regs.dest) & size_mask;
+    }
+    else {
+        i1 = *regs.dest & size_mask;
+    }
+    //in 2
+    if ((Memory[R[15]] >> 4) & 0x01 == 1) {
+        i2 = get_mem_q(*regs.src) & size_mask;
+    }
+    else {
+        i2 = *regs.src & size_mask;
+    }
+
+    v = i1 & i2;//operate
     
+    //out
+    if ((Memory[R[15]] >> 5) & 0x01 == 1) {
+        set_mem_q(*regs.dest, v & size_mask);
+    }
+    else {
+        *regs.dest = v;
+    }
+
+    if (regs.dest != & R[15])
+        R[15] += 2;
 }
 
 void xor() {
+    reg_operand_packet regs = getreg(Memory[R[15] + 1]);
+    unsigned long long size_mask = get_size_mask((Memory[R[15]] >> 6) & 0x03);
+    unsigned long long i1, i2;
+    unsigned long long v;
+
+    //in 1
+    if ((Memory[R[15]] >> 5) & 0x01 == 1) {
+        i1 = get_mem_q(*regs.dest) & size_mask;
+    }
+    else {
+        i1 = *regs.dest & size_mask;
+    }
+    //in 2
+    if ((Memory[R[15]] >> 4) & 0x01 == 1) {
+        i2 = get_mem_q(*regs.src) & size_mask;
+    }
+    else {
+        i2 = *regs.src & size_mask;
+    }
+
+    v = i1 ^ i2;//operate
     
+    //out
+    if ((Memory[R[15]] >> 5) & 0x01 == 1) {
+        set_mem_q(*regs.dest, v & size_mask);
+    }
+    else {
+        *regs.dest = v;
+    }
+
+    if (regs.dest != & R[15])
+        R[15] += 2;
 }
 
 void not() {
+    reg_operand_packet regs = getreg(Memory[R[15] + 1]);
+    unsigned long long size_mask = get_size_mask((Memory[R[15]] >> 6) & 0x03);
+    unsigned long long i1;
+    unsigned long long v;
+
+    if ((Memory[R[15]] >> 5) & 0x01 == 1) {
+        i1 = get_mem_q(*regs.dest) & size_mask;
+    }
+    else {
+        i1 = *regs.dest & size_mask;
+    }
+
+    v = ~i1;//operate
     
+    if ((Memory[R[15]] >> 5) & 0x01 == 1) {
+        set_mem_q(*regs.dest, v & size_mask);
+    }
+    else {
+        *regs.dest = v;
+    }
+
+    if (regs.dest != & R[15])
+        R[15] += 2;
 }
 
 
 void mov() {
+    reg_operand_packet regs = getreg(Memory[R[15] + 1]);
+    unsigned long long size_mask = get_size_mask((Memory[R[15]] >> 6) & 0x03);
+    unsigned long long i2;
+    unsigned long long v;
+
+    if ((Memory[R[15]] >> 4) & 0x01 == 1) {
+        i2 = get_mem_q(*regs.src) & size_mask;
+    }
+    else {
+        i2 = *regs.src & size_mask;
+    }
+
+    v = i2;//operate
     
+    if ((Memory[R[15]] >> 5) & 0x01 == 1) {
+        set_mem_q(*regs.dest, v & size_mask);
+    }
+    else {
+        *regs.dest = v;
+    }
+
+    if (regs.dest != & R[15])
+        R[15] += 2;
 }
 
 void set() {
-    
+    reg_operand_packet regs = getreg(Memory[R[15] + 1]);
+    unsigned long long size_mask = get_size_mask((Memory[R[15]] >> 6) & 0x03);
+    unsigned long long rawin = get_mem_q(R[15] + 2);
+
+    if ((Memory[R[15]] >> 5) & 0x01 == 1) {
+        set_mem_q(*regs.dest, rawin & size_mask);
+    }
+    else {
+        *regs.dest = rawin;
+    }
+
+    if (regs.dest != & R[15])
+        R[15] += 2 + power(2, Memory[R[15]] >> 6);
 }
 
 
@@ -161,19 +491,19 @@ void cmov() {
 
 
 void xtn() {
-    switch (Code[R[15] + 2]) {
+    switch (Memory[R[15] + 2]) {
         case 0x00:
-            if (Code[R[15] + 1] > 64) {
+            if (Memory[R[15] + 1] > 64) {
                 printf("Extended operaton to large\n");
                 close(1);
             }
             xtn_vmfc();
-            R[15] =+ Code[R[15]+1];
             break;
         default:
             printf("\n!Unrecognized extended operatore!\n");
             close(1);
     }
+    R[15] += Memory[R[15]+1];
 }
 
 
@@ -187,13 +517,13 @@ int run() {
     while (0 == 0) {
         if (running == false) return 0;
         
-        if (R[15] > (CodeSize - 1)) {
-            printf("\n\n!!!Program Tried to run out of code-area!!!\n\n");
+        if (R[15] > (MemorySize - 1)) {
+            printf("\n\n!!!Program Tried to run out of Memory!!!\n\n");
             close(1);
         }
 
 
-        switch (Code[R[15]] & 0x0f) {
+        switch (Memory[R[15]] & 0x0f) {
             case 0x0:
                 mul();
                 break;
@@ -253,53 +583,15 @@ int run() {
 void init() {
     unsigned long long size = 0;
 
-    fread(&Header, sizeof(Header), 1, fin);
+    rewind(fin);
+    fseek(fin, 0L, SEEK_END);
+    MemorySize = ftell(fin);
+    rewind(fin);
 
-    Code = malloc(Header.data_offset);
-    fread(Code, Header.data_offset, 1, fin);
+    Memory = malloc(MemorySize);
+    fread(Memory, MemorySize, 1, fin);
 
-
-    if (Header.data_offset != 0) {
-        if (Header.rodata_offset != 0) {
-            size = Header.rodata_offset - Header.data_offset;
-        }
-        else {
-            fseek(fin, 0L, SEEK_END);
-            size = ftell(fin) - sizeof(Header);
-            rewind(fin);
-            size -= Header.data_offset;
-        }
-        if (CodeSize == 0) CodeSize = Header.data_offset;
-        Data = malloc(size);
-        fseek(fin, Header.data_offset + sizeof(Header), SEEK_SET);
-        fread(Data, size, 1, fin);
-        DataSize = size;
-    }
-
-    if (Header.rodata_offset != 0) {
-        fseek(fin, 0L, SEEK_END);
-        size = ftell(fin) - sizeof(Header);
-        rewind(fin);
-
-        size -= Header.rodata_offset;
-
-        if (CodeSize == 0) CodeSize = Header.rodata_offset;
-
-        ROData = malloc(size);
-        fseek(fin, Header.rodata_offset + sizeof(Header), SEEK_SET);
-        fread(ROData, (size), 1, fin);
-        RODataSize = size;
-    }
-
-    if (CodeSize == 0) {
-        fseek(fin, 0L, SEEK_END);
-        CodeSize = ftell(fin) - sizeof(Header);
-        rewind(fin);
-    }
-
-    stack = malloc(sizeof(unsigned char) * (1024*8));
-
-    R[15] = Header.main_offset;
+    R[15] = 0;
 }
 
 
@@ -319,7 +611,5 @@ int main(int argc, char** argv) {
     init();
     run();
 
-
-    printf("\n\n\nExited with return code: 0x%llx\n", R[0]);
-    return 0;
+    close(0);
 }

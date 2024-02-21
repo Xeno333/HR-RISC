@@ -135,6 +135,10 @@ unsigned long long* get_const(char* consti) {
     if ((consti[0] == '0') && (consti[1] == 'x')) {
         constv = strtoull(consti + 2, NULL, 16);
     }
+    else if ((consti[0] - '0' >= 0) && (consti[0] - '0' < 10) ) {
+        constv = strtoull(consti, NULL, 10);
+        //Buggy
+    }
     else {
         for (int i = 0; i < lable_map_pointer; i++) {
             if (strcmp(lable_map[i].lable_name, consti) == 0) {
@@ -348,10 +352,10 @@ void compile_xtn(int line_number) {
             printf("Error on line: %d, bad operand!\n", line_number);
             close(1);
         }
-        unsigned long long num = strtoull(token.operand2+2, NULL, 16);
+        unsigned long long num = *get_const(token.operand2);
         unsigned char* num_array = (unsigned char*)&num;
 
-        bytecode_instruction[bytecode_instruction_length++] = 0xa;//size
+        bytecode_instruction[bytecode_instruction_length++] = 0xb;//size
 
         bytecode_instruction[bytecode_instruction_length++] = 0x00; //operator
 
@@ -476,7 +480,7 @@ int compile_istruction(int line_number) {
     }
 
     else if (strcmp(token.operator, "not") == 0) {
-        if ((token.operand1 == NULL) || (token.operand2 == NULL)) {
+        if ((token.operand1 == NULL) || (token.operand2 != NULL)) {
             printf("Error on line: %d, bad operand!\n", line_number);
             close(1);
         }
@@ -509,7 +513,7 @@ int compile_istruction(int line_number) {
     }
 
     else if (strcmp(token.operator, "push") == 0) {
-        if ((token.operand2 == NULL)) {
+        if ((token.operand1 != NULL) && (token.operand2 == NULL)) {
             printf("Error on line: %d, bad operand!\n", line_number);
             close(1);
         }
@@ -518,7 +522,7 @@ int compile_istruction(int line_number) {
     }
 
     else if (strcmp(token.operator, "pop") == 0) {
-        if ((token.operand1 == NULL)) {
+        if ((token.operand1 == NULL) && (token.operand2 != NULL)) {
             printf("Error on line: %d, bad operand!\n", line_number);
             close(1);
         }
