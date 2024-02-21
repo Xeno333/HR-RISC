@@ -544,7 +544,7 @@ int compile_istruction(int line_number) {
             printf("Error on line: %d, bad operand!\n", line_number);
             close(1);
         }
-        bytecode_instruction[bytecode_instruction_length++] = (opcode & 0xf0) | 0xf;
+        bytecode_instruction[bytecode_instruction_length++] = (opcode & 0xf0) | 0xe;
         bytecode_instruction[bytecode_instruction_length++] = get_regid(token.operand1);
         bytecode_instruction[bytecode_instruction_length++] = get_regid(token.operand3) | (get_regid(token.operand2) << 4);
     }

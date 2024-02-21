@@ -93,7 +93,13 @@ r11 reserved for vm or hardware
 r12 reserved for vm or hardware
 r13 reserved for vm or hardware
 
-r14 is rflags
+r14 is rflags {
+Bit 0: zero, equal : 1=Z 0:NZ
+Bit 1: overflow	   : 1=O 0:NO
+Bit 2: carry       : 1=C 0:NC 
+Bit 3: sign (used for Less than\Greater than) 1=N 0=P
+Resurved
+}
 r15 is rip
 
 

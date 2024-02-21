@@ -152,6 +152,38 @@ void mul() {
         *regs.dest = v;
     }
 
+    //Zero
+    if (v == 0) {
+        R[14] |= 0b1;
+    }
+    else {
+        R[14] &= 0xFFFFFFFFFFFFFFFf-1;
+    }
+
+    //overflow
+    if (v > 0) {
+        R[14] |= 0b10;
+    }
+    else {
+        R[14] &= 0xFFFFFFFFFFFFFFFf-2;
+    }
+
+    //carry
+    if (i1 < i2) {
+        R[14] |= 0b100;
+    }
+    else {
+        R[14] &= 0xFFFFFFFFFFFFFFFf-4;
+    }
+
+    //sign
+    if (v < 0) {
+        R[14] |= 0b1000;
+    }
+    else {
+        R[14] &= 0xFFFFFFFFFFFFFFFf-8;
+    }
+
     if (regs.dest != & R[15])
         R[15] += 2;
 }
@@ -185,6 +217,38 @@ void div() {
     }
     else {
         *regs.dest = v;
+    }
+
+    //Zero
+    if (v == 0) {
+        R[14] |= 0b1;
+    }
+    else {
+        R[14] &= 0xFFFFFFFFFFFFFFFf-1;
+    }
+
+    //overflow
+    if (v > 0) {
+        R[14] |= 0b10;
+    }
+    else {
+        R[14] &= 0xFFFFFFFFFFFFFFFf-2;
+    }
+
+    //carry
+    if (i1 < i2) {
+        R[14] |= 0b100;
+    }
+    else {
+        R[14] &= 0xFFFFFFFFFFFFFFFf-4;
+    }
+
+    //sign
+    if (v < 0) {
+        R[14] |= 0b1000;
+    }
+    else {
+        R[14] &= 0xFFFFFFFFFFFFFFFf-8;
     }
 
     if (regs.dest != & R[15])
@@ -222,6 +286,38 @@ void mod() {
         *regs.dest = v;
     }
 
+    //Zero
+    if (v == 0) {
+        R[14] |= 0b1;
+    }
+    else {
+        R[14] &= 0xFFFFFFFFFFFFFFFf-1;
+    }
+
+    //overflow
+    if (v > 0) {
+        R[14] |= 0b10;
+    }
+    else {
+        R[14] &= 0xFFFFFFFFFFFFFFFf-2;
+    }
+
+    //carry
+    if (i1 < i2) {
+        R[14] |= 0b100;
+    }
+    else {
+        R[14] &= 0xFFFFFFFFFFFFFFFf-4;
+    }
+
+    //sign
+    if (v < 0) {
+        R[14] |= 0b1000;
+    }
+    else {
+        R[14] &= 0xFFFFFFFFFFFFFFFf-8;
+    }
+
     if (regs.dest != & R[15])
         R[15] += 2;
 }
@@ -257,6 +353,38 @@ void add() {
         *regs.dest = v;
     }
 
+    //Zero
+    if (v == 0) {
+        R[14] |= 0b1;
+    }
+    else {
+        R[14] &= 0xFFFFFFFFFFFFFFFf-1;
+    }
+
+    //overflow
+    if (v > 0) {
+        R[14] |= 0b10;
+    }
+    else {
+        R[14] &= 0xFFFFFFFFFFFFFFFf-2;
+    }
+
+    //carry
+    if (i1 < i2) {
+        R[14] |= 0b100;
+    }
+    else {
+        R[14] &= 0xFFFFFFFFFFFFFFFf-4;
+    }
+
+    //sign
+    if (v < 0) {
+        R[14] |= 0b1000;
+    }
+    else {
+        R[14] &= 0xFFFFFFFFFFFFFFFf-8;
+    }
+
     if (regs.dest != & R[15])
         R[15] += 2;
 }
@@ -290,6 +418,38 @@ void sub() {
     }
     else {
         *regs.dest = v;
+    }
+
+    //Zero
+    if (v == 0) {
+        R[14] |= 0b1;
+    }
+    else {
+        R[14] &= 0xFFFFFFFFFFFFFFFf-1;
+    }
+
+    //overflow
+    if (v > 0) {
+        R[14] |= 0b10;
+    }
+    else {
+        R[14] &= 0xFFFFFFFFFFFFFFFf-2;
+    }
+
+    //carry
+    if (i1 < i2) {
+        R[14] |= 0b100;
+    }
+    else {
+        R[14] &= 0xFFFFFFFFFFFFFFFf-4;
+    }
+
+    //sign
+    if (v < 0) {
+        R[14] |= 0b1000;
+    }
+    else {
+        R[14] &= 0xFFFFFFFFFFFFFFFf-8;
     }
 
     if (regs.dest != & R[15])
@@ -493,16 +653,110 @@ void push() {
 }
 
 void pop() {
-    
+    reg_operand_packet regs = getreg(Memory[R[15] + 1]);
+    unsigned long long size_mask = get_size_mask((Memory[R[15]] >> 6) & 0x03);
+    unsigned long long v;
+
+    v = get_mem_q(R[9]) & size_mask;
+
+    //out
+    if ((Memory[R[15]] >> 5) & 0x01 == 1) {
+        set_mem_q(*regs.dest, v & size_mask);
+    }
+    else {
+        *regs.dest = v;
+    }
+
+    R[9] -= 8;
+
+    if (regs.dest != & R[15])
+        R[15] += 2;
 }
 
 
 void cmp() {
-    
+    reg_operand_packet regs = getreg(Memory[R[15] + 1]);
+    unsigned long long size_mask = get_size_mask((Memory[R[15]] >> 6) & 0x03);
+    unsigned long long i1, i2;
+    unsigned long long v;
+
+    //in 1
+    if ((Memory[R[15]] >> 5) & 0x01 == 1) {
+        i1 = get_mem_q(*regs.dest) & size_mask;
+    }
+    else {
+        i1 = *regs.dest & size_mask;
+    }
+    //in 2
+    if ((Memory[R[15]] >> 4) & 0x01 == 1) {
+        i2 = get_mem_q(*regs.src) & size_mask;
+    }
+    else {
+        i2 = *regs.src & size_mask;
+    }
+
+    v = i1 - i2;//operate
+
+    //Zero
+    if (v == 0) {
+        R[14] |= 0b1;
+    }
+    else {
+        R[14] &= 0xFFFFFFFFFFFFFFFf-1;
+    }
+
+    //overflow
+    if (v > 0) {
+        R[14] |= 0b10;
+    }
+    else {
+        R[14] &= 0xFFFFFFFFFFFFFFFf-2;
+    }
+
+    //carry
+    if (i1 < i2) {
+        R[14] |= 0b100;
+    }
+    else {
+        R[14] &= 0xFFFFFFFFFFFFFFFf-4;
+    }
+
+    //sign
+    if (v < 0) {
+        R[14] |= 0b1000;
+    }
+    else {
+        R[14] &= 0xFFFFFFFFFFFFFFFf-8;
+    }
+
+
+    if (regs.dest != & R[15])
+        R[15] += 2;
 }
 
 void cmov() {
-    
+    reg_operand_packet regs = getreg(Memory[R[15] + 2]);
+    unsigned long long size_mask = get_size_mask((Memory[R[15]] >> 6) & 0x03);
+    unsigned long long v;
+
+    if ((Memory[R[15]] >> 4) & 0x01 == 1) {
+        v = get_mem_q(*regs.src) & size_mask;
+    }
+    else {
+        v = *regs.src & size_mask;
+    }
+
+    if (((R[14] & R[Memory[R[15] + 1] & 0x0f]) == 1) || (R[14] == R[Memory[R[15] + 1] & 0x0f])) {
+        if ((Memory[R[15]] >> 5) & 0x01 == 1) {
+            set_mem_q(*regs.dest, v & size_mask);
+        }
+        else {
+            *regs.dest = v;
+        }
+    }
+
+    if (regs.dest != & R[15])
+        R[15] += 3;
 }
 
 
