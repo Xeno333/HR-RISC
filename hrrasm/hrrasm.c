@@ -402,7 +402,7 @@ int compile_istruction(int line_number) {
         }
     }
     if ((token.operand1 != NULL) && (token.operand1[0] == '[')) opcode = opcode | 0b00100000;
-    if ((token.operand2 != NULL) && (token.operand2[0] == '[')) opcode = opcode | 0b00100000;
+    if ((token.operand2 != NULL) && (token.operand2[0] == '[')) opcode = opcode | 0b00010000;
 
 
     //Compile instruct

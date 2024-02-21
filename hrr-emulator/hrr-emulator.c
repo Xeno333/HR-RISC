@@ -473,7 +473,23 @@ void set() {
 
 
 void push() {
+    reg_operand_packet regs = getreg(Memory[R[15] + 1]);
+    unsigned long long size_mask = get_size_mask((Memory[R[15]] >> 6) & 0x03);
+    unsigned long long v;
+
+    //in 2
+    if ((Memory[R[15]] >> 4) & 0x01 == 1) {
+        v = get_mem_q(*regs.src) & size_mask;
+    }
+    else {
+        v = *regs.src & size_mask;
+    }
     
+    //out
+    set_mem_q(R[9], v);
+    R[9] += 8;
+
+    R[15] += 2;
 }
 
 void pop() {
